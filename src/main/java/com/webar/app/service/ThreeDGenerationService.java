@@ -43,9 +43,13 @@ public class ThreeDGenerationService {
         if(active.isPresent()) return toResponse(active.get());
 
         List<MenuMedia> media=menuMediaRepository.findByMenuItemIdOrderByIdAsc(menuItemId);
-        List<MenuMedia> photos=media.stream().filter(m->m.getMediaType()==MediaType.PHOTO).limit(4).toList();
+        List<MenuMedia> photos=media.stream()
+                .filter(m->m.getMediaType()==MediaType.PHOTO)
+                .filter(m->isMeshyImage(m.getFileName()))
+                .limit(4).toList();
         List<MenuMedia> videos=media.stream().filter(m->m.getMediaType()==MediaType.VIDEO).toList();
-        if(photos.isEmpty() && videos.isEmpty()) throw new IllegalStateException("Upload at least one food image or video before generating a 3D model");
+        if(photos.isEmpty() && videos.isEmpty())
+            throw new IllegalStateException("Upload at least one JPG, JPEG or PNG food image, or a video, before generating a 3D model");
 
         try {
             List<String> imageDataUris=new ArrayList<>();
@@ -54,7 +58,7 @@ public class ThreeDGenerationService {
                 imageDataUris.addAll(extractVideoFramesAsDataUris(video.getMediaUrl(),4-imageDataUris.size()));
                 if(imageDataUris.size()>=4) break;
             }
-            if(imageDataUris.isEmpty()) throw new IllegalStateException("No usable image frames were found");
+            if(imageDataUris.isEmpty()) throw new IllegalStateException("No usable JPG/PNG image frames were found");
 
             List<String> selected=imageDataUris.subList(0,Math.min(4,imageDataUris.size()));
             String type=selected.size()==1?"IMAGE_TO_3D":"MULTI_IMAGE_TO_3D";
@@ -151,6 +155,11 @@ public class ThreeDGenerationService {
         finally{if(dir!=null)try(var s=Files.walk(dir)){s.sorted(Comparator.reverseOrder()).forEach(p->{try{Files.deleteIfExists(p);}catch(IOException ignored){}});}catch(IOException ignored){}}
     }
 
+    private boolean isMeshyImage(String fileName){
+        if(fileName==null) return false;
+        String lower=fileName.toLowerCase(Locale.ROOT);
+        return lower.endsWith(".jpg")||lower.endsWith(".jpeg")||lower.endsWith(".png");
+    }
     private MenuItem getItem(Long id){return menuItemRepository.findById(id).orElseThrow(()->new NoSuchElementException("Menu item not found"));}
     private ThreeDGenerationJobResponse toResponse(ThreeDGenerationJob j){return new ThreeDGenerationJobResponse(j.getId(),j.getMenuItem().getId(),j.getProvider(),j.getProviderTaskId(),j.getGenerationType(),j.getProgress(),j.getStatus(),j.getSourceMediaCount(),j.getErrorMessage(),j.getCreatedAt(),j.getUpdatedAt(),j.getCompletedAt());}
     private String sanitize(String v){return v==null||v.isBlank()?"menu-item":v.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+","-").replaceAll("^-+|-+$","");}
