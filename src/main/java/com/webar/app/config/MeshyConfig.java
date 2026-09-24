@@ -1,10 +1,5 @@
 package com.webar.app.config;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
-@ConfigurationProperties(prefix = "meshy")
-public record MeshyConfig(String apiKey, String baseUrl) {
-    public MeshyConfig {
-        if (baseUrl == null || baseUrl.isBlank()) baseUrl = "https://api.meshy.ai";
-    }
-}
+/** Deprecated compatibility placeholder; Meshy is not used by Phase 3. */
+@Deprecated
+public record MeshyConfig(String apiKey, String baseUrl, String aiModel, long pollIntervalMs) {}
